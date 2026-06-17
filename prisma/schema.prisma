@@ -1,0 +1,123 @@
+// HaCleanHouse — modello dati (vedi DESIGN.md §Modello dati)
+//
+// NB: le occorrenze sono VIRTUALI — calcolate al volo dalla ricorrenza del Task
+// (vedi lib/occurrences.ts, pattern "rule + eccezioni" alla iCal/Google Calendar).
+// TaskOccurrence salva SOLO le eccezioni: completata / saltata / ripianificata /
+// stato calendario. Una riga esiste solo se l'occorrenza devia dal default.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Frequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  EVERY_N_DAYS
+}
+
+enum AssignmentMode {
+  FIXED
+  ROTATION
+}
+
+enum OccurrenceStatus {
+  PENDING
+  DONE
+  SKIPPED
+}
+
+model House {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  members Member[]
+  rooms   Room[]
+  tasks   Task[]
+}
+
+model Member {
+  id               String   @id @default(cuid())
+  houseId          String
+  house            House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  haUserId         String   @unique
+  haPersonEntityId String?
+  displayName      String
+  color            String   @default("#3b82f6")
+  createdAt        DateTime @default(now())
+
+  assignedTasks       Task[]           @relation("TaskAssignees")
+  assignedOccurrences TaskOccurrence[] @relation("OccurrenceAssignee")
+  completedOccurrences TaskOccurrence[] @relation("OccurrenceCompletedBy")
+
+  @@index([houseId])
+}
+
+model Room {
+  id      String @id @default(cuid())
+  houseId String
+  house   House  @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  name    String
+  icon    String @default("mdi:broom")
+  order   Int    @default(0)
+
+  tasks Task[]
+
+  @@index([houseId])
+}
+
+model Task {
+  id               String         @id @default(cuid())
+  houseId          String
+  house            House          @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  roomId           String
+  room             Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  name             String
+  priority         Int            @default(2) // 1=alta, 2=media, 3=bassa
+  estMinutes       Int            @default(10)
+  frequency        Frequency
+  everyNDays       Int? // valorizzato solo per EVERY_N_DAYS
+  startDate        DateTime       @db.Date // ancora della ricorrenza (sostituisce createdAt nel calcolo)
+  repeatCount      Int? // fine = "dopo N occorrenze" (esclusivo con endDate)
+  endDate          DateTime?      @db.Date // fine = "fino a data" inclusiva (esclusivo con repeatCount)
+  seriesId         String? // raggruppa i tronconi creati dagli split "questa e successive"
+  haEventId        String? // uid (iCal) dell'evento ricorrente sul calendario HA
+  assignmentMode   AssignmentMode @default(ROTATION)
+  assignees        Member[]       @relation("TaskAssignees") // assegnatari fissi (modalità FIXED)
+  active           Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+
+  occurrences TaskOccurrence[]
+
+  @@index([houseId])
+  @@index([roomId])
+  @@index([seriesId])
+}
+
+model TaskOccurrence {
+  id                  String           @id @default(cuid())
+  houseId             String
+  taskId              String
+  task                Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  cadenceDate         DateTime         @db.Date // slot di ricorrenza = IDENTITÀ dell'occorrenza
+  dueDate             DateTime         @db.Date // data mostrata (= cadenceDate, tranne se ripianificata)
+  assignedMemberId    String?
+  assignedMember      Member?          @relation("OccurrenceAssignee", fields: [assignedMemberId], references: [id], onDelete: SetNull)
+  status              OccurrenceStatus @default(PENDING)
+  completedAt         DateTime?
+  completedByMemberId String?
+  completedByMember   Member?          @relation("OccurrenceCompletedBy", fields: [completedByMemberId], references: [id], onDelete: SetNull)
+  haEventId           String? // uid di un evento singolo "standalone" (occorrenza ri-aggiunta dopo rimozione)
+  calendarRemoved     Boolean          @default(false) // istanza rimossa dalla serie sul calendario
+  createdAt           DateTime         @default(now())
+
+  @@unique([taskId, cadenceDate])
+  @@index([houseId, dueDate, status])
+}
