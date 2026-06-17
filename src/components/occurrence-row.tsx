@@ -28,6 +28,7 @@ export type OccurrenceVM = {
   id: string;
   taskName: string;
   roomName: string;
+  roomIcon: string;
   priority: number; // 1 alta, 2 media, 3 bassa
   estMinutes: number;
   status: "PENDING" | "DONE" | "SKIPPED";

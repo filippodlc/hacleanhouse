@@ -1,7 +1,7 @@
-import "server-only";
-import { Frequency, OccurrenceStatus, type Task, type Member } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import type { OccurrenceVM } from "@/components/occurrence-row";
+import { prisma } from "@/lib/db";
+import { Frequency, OccurrenceStatus, type Member, type Task } from "@prisma/client";
+import "server-only";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -238,7 +238,7 @@ export async function listOccurrences(opts: {
   const out: OccurrenceVM[] = [];
 
   const toVMRow = (
-    task: Task & { assignees: Member[]; room: { name: string } },
+    task: Task & { assignees: Member[]; room: { name: string; icon: string } },
     cadenceDate: Date,
     seq: number,
     override: (typeof overrides)[number] | undefined,
@@ -254,6 +254,7 @@ export async function listOccurrences(opts: {
       id: encodeOccId(task.id, cadenceDate),
       taskName: task.name,
       roomName: task.room.name,
+      roomIcon: task.room.icon,
       priority: task.priority,
       estMinutes: task.estMinutes,
       status,

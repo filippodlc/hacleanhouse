@@ -11,6 +11,8 @@ import {
   updateRoom,
   updateTask,
 } from "@/app/actions";
+import { IconPicker } from "@/components/icon-picker";
+import { RoomIcon } from "@/components/room-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -439,6 +441,7 @@ export function RoomManager({ rooms }: { rooms: RoomVM[] }) {
       {rooms.length === 0 && <p className="text-sm text-muted-foreground">Nessuna stanza.</p>}
       {rooms.map((r) => (
         <div key={r.id} className="flex items-center gap-2 rounded-md border p-2 transition-colors hover:bg-muted/50">
+          <RoomIcon icon={r.icon} className="size-5 text-muted-foreground" />
           <span className="flex-1 text-sm">{r.name}</span>
           <Button size="icon" variant="ghost" onClick={() => openEdit(r)}>
             <Pencil className="size-4" />
@@ -465,8 +468,8 @@ export function RoomManager({ rooms }: { rooms: RoomVM[] }) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Icona (mdi)</Label>
-                <Input value={icon} onChange={(e) => setIcon(e.target.value)} />
+                <Label>Icona</Label>
+                <IconPicker value={icon} onChange={setIcon} />
               </div>
               <div className="space-y-1">
                 <Label>Ordine</Label>

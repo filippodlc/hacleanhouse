@@ -1,11 +1,12 @@
-import { getCurrentMember } from "@/lib/auth";
 import { OccurrenceRow, type OccurrenceVM } from "@/components/occurrence-row";
-import {
-  listOccurrences,
-  OVERDUE_LOOKBACK_DAYS,
-  UPCOMING_LOOKAHEAD_DAYS,
-} from "@/lib/occurrences";
+import { RoomIcon } from "@/components/room-icon";
 import { Card, CardContent } from "@/components/ui/card";
+import { getCurrentMember } from "@/lib/auth";
+import {
+    listOccurrences,
+    OVERDUE_LOOKBACK_DAYS,
+    UPCOMING_LOOKAHEAD_DAYS,
+} from "@/lib/occurrences";
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +108,10 @@ export default async function TodayPage() {
       ) : (
         [...byRoom.entries()].map(([room, items]) => (
           <section key={room} className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground">{room}</h2>
+            <h2 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <RoomIcon icon={items[0]?.roomIcon} />
+              {room}
+            </h2>
             <div className="space-y-2">
               {items.map((o) => (
                 <OccurrenceRow key={o.id} occ={o} />
