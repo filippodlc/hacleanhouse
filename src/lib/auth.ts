@@ -4,6 +4,7 @@ import { validateHaToken } from "@/lib/ha";
 import type { House, Member } from "@prisma/client";
 import { getIronSession, type IronSession } from "iron-session";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import "server-only";
 
 export type SessionData = {
@@ -114,7 +115,9 @@ export async function loginWithHaToken(token: string): Promise<Member | null> {
  * In sviluppo, se DEV_HA_USER_ID è impostato, esegue un auto-login mock
  * (nessuna verifica del token) così si lavora subito su UI/dati.
  */
-export async function getCurrentMember(): Promise<Member | null> {
+// Memoizzato per-richiesta: layout e page lo chiamano entrambi nello stesso
+// render -> una sola lettura sessione + query DB invece di due.
+export const getCurrentMember = cache(async (): Promise<Member | null> => {
   const session = await getSession();
   if (session.memberId) {
     const member = await prisma.member.findUnique({ where: { id: session.memberId } });
@@ -128,7 +131,7 @@ export async function getCurrentMember(): Promise<Member | null> {
   }
 
   return null;
-}
+});
 
 /** Come getCurrentMember ma lancia se non autenticato (per Server Actions/route protette). */
 export async function requireMember(): Promise<Member> {
