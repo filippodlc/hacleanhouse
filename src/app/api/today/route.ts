@@ -1,21 +1,27 @@
 import { ensureDefaultHouse } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { listOccurrences, OVERDUE_LOOKBACK_DAYS } from "@/lib/occurrences";
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 
 const MS_PER_DAY = 86_400_000;
 
 /**
- * Confronto del Bearer in tempo costante (no short-circuit al primo byte ->
+ * Verifica del token in tempo costante (no short-circuit al primo byte ->
  * niente timing leak sul token). timingSafeEqual richiede buffer di pari
  * lunghezza, quindi il check di lunghezza fa da guardia; la differenza di
  * lunghezza non è segreta (la lunghezza del token atteso è fissa).
+ *
+ * Lo schema `Bearer ` è opzionale: il secret in HA contiene solo il token
+ * grezzo (YAML non permette di concatenare una stringa letterale con `!secret`,
+ * quindi l'header arriva senza prefisso), ma accettiamo anche `Bearer <token>`
+ * per chi preferisce inviarlo nello schema HTTP standard.
  */
 function authOk(header: string | null): boolean {
   if (!header) return false;
-  const expected = Buffer.from(`Bearer ${env.apiToken}`);
-  const got = Buffer.from(header);
+  const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : header;
+  const expected = Buffer.from(env.apiToken);
+  const got = Buffer.from(token);
   return got.length === expected.length && timingSafeEqual(got, expected);
 }
 
@@ -86,7 +92,7 @@ export async function GET(request: Request) {
   const sections: string[] = [];
   if (todayOcc.length > 0) {
     sections.push(
-      `🧹 Pulizie di oggi (${todayOcc.length}):\n${todayOcc.map((o) => line(o)).join("\n")}`,
+      `🤟🏻 Cosa devi fare oggi (${todayOcc.length}):\n${todayOcc.map((o) => line(o)).join("\n")}`,
     );
   }
   if (overdue.length > 0) {
