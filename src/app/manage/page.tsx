@@ -63,6 +63,7 @@ export default async function ManagePage() {
           color: m.color,
         }))}
         currentMemberId={member.id}
+        canManage={member.isAdmin}
       />
     </div>
   );

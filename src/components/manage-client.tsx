@@ -501,9 +501,13 @@ type MemberVM = {
 export function MemberManager({
   members,
   currentMemberId,
+  canManage,
 }: {
   members: MemberVM[];
   currentMemberId: string;
+  // Solo gli admin gestiscono i membri (vedi requireAdmin lato server). I non-admin
+  // vedono l'elenco in sola lettura; il gating UI rispecchia quello del server.
+  canManage: boolean;
 }) {
   const { pending, run } = useAction();
   const [open, setOpen] = useState(false);
@@ -542,9 +546,11 @@ export function MemberManager({
     <SectionCard
       title="Membri"
       action={
-        <Button size="sm" onClick={openNew}>
-          <Plus className="size-4" /> Nuovo
-        </Button>
+        canManage ? (
+          <Button size="sm" onClick={openNew}>
+            <Plus className="size-4" /> Nuovo
+          </Button>
+        ) : null
       }
     >
       {members.map((m) => (
@@ -556,10 +562,12 @@ export function MemberManager({
             </div>
             <div className="truncate text-xs text-muted-foreground">{m.haUserId}</div>
           </div>
-          <Button size="icon" variant="ghost" onClick={() => openEdit(m)}>
-            <Pencil className="size-4" />
-          </Button>
-          {m.id !== currentMemberId && (
+          {canManage && (
+            <Button size="icon" variant="ghost" onClick={() => openEdit(m)}>
+              <Pencil className="size-4" />
+            </Button>
+          )}
+          {canManage && m.id !== currentMemberId && (
             <Button
               size="icon"
               variant="ghost"

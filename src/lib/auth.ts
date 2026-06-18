@@ -48,6 +48,19 @@ export async function ensureDefaultHouse(): Promise<House> {
  * NB: usato solo dal mock di sviluppo. Per il login reale usare `provisionMember`,
  * che applica il controllo d'accesso (allowlist).
  */
+async function createBootstrapMember(
+  haUserId: string,
+  displayName: string,
+  houseId: string,
+): Promise<Member> {
+  // Il primo membro di una casa diventa admin (bootstrap): senza questo nessuno
+  // potrebbe gestire i membri (le mutazioni sono riservate agli admin).
+  const isFirst = (await prisma.member.count({ where: { houseId } })) === 0;
+  return prisma.member.create({
+    data: { haUserId, displayName, houseId, isAdmin: isFirst },
+  });
+}
+
 export async function getOrCreateMember(
   haUserId: string,
   displayName: string,
@@ -55,9 +68,7 @@ export async function getOrCreateMember(
   const found = await prisma.member.findUnique({ where: { haUserId } });
   if (found) return found;
   const house = await ensureDefaultHouse();
-  return prisma.member.create({
-    data: { haUserId, displayName, houseId: house.id },
-  });
+  return createBootstrapMember(haUserId, displayName, house.id);
 }
 
 /**
@@ -76,9 +87,7 @@ export async function provisionMember(
   if (found) return found;
   if (!env.allowedHaUserIds.includes(haUserId)) return null;
   const house = await ensureDefaultHouse();
-  return prisma.member.create({
-    data: { haUserId, displayName, houseId: house.id },
-  });
+  return createBootstrapMember(haUserId, displayName, house.id);
 }
 
 /**
@@ -125,6 +134,17 @@ export async function getCurrentMember(): Promise<Member | null> {
 export async function requireMember(): Promise<Member> {
   const member = await getCurrentMember();
   if (!member) throw new Error("Non autenticato");
+  return member;
+}
+
+/**
+ * Come requireMember ma richiede anche il ruolo admin. Usato per la gestione dei
+ * membri: aggiungere un Member equivale a concedere accesso all'app a un utente HA,
+ * quindi non deve essere consentito a qualunque membro.
+ */
+export async function requireAdmin(): Promise<Member> {
+  const member = await requireMember();
+  if (!member.isAdmin) throw new Error("Operazione riservata agli amministratori");
   return member;
 }
 

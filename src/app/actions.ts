@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Frequency, AssignmentMode, OccurrenceStatus, Prisma, type Member } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { randomUUID } from "crypto";
-import { requireMember, getHaAccessToken } from "@/lib/auth";
+import { requireMember, requireAdmin, getHaAccessToken } from "@/lib/auth";
 import {
   createCalendarEventWs,
   deleteCalendarEventWs,
@@ -63,7 +63,7 @@ const memberSchema = z.object({
 });
 
 export async function createMember(input: z.input<typeof memberSchema>) {
-  const member = await requireMember();
+  const member = await requireAdmin();
   const data = memberSchema.parse(input);
   await prisma.member.create({
     data: {
@@ -78,7 +78,7 @@ export async function createMember(input: z.input<typeof memberSchema>) {
 }
 
 export async function updateMember(id: string, input: z.input<typeof memberSchema>) {
-  const member = await requireMember();
+  const member = await requireAdmin();
   const data = memberSchema.parse(input);
   await prisma.member.updateMany({
     where: { id, houseId: member.houseId },
@@ -92,7 +92,7 @@ export async function updateMember(id: string, input: z.input<typeof memberSchem
 }
 
 export async function deleteMember(id: string) {
-  const member = await requireMember();
+  const member = await requireAdmin();
   if (id === member.id) throw new Error("Non puoi eliminare te stesso");
   await prisma.member.deleteMany({ where: { id, houseId: member.houseId } });
   revalidateAll();

@@ -51,6 +51,9 @@ model Member {
   haPersonEntityId String?
   displayName      String
   color            String   @default("#3b82f6")
+  // Solo gli admin possono gestire i membri (aggiungere/rimuovere utenti = concedere
+  // accesso all'app). Il primo membro provisionato in una casa diventa admin (bootstrap).
+  isAdmin          Boolean  @default(false)
   createdAt        DateTime @default(now())
 
   assignedTasks       Task[]           @relation("TaskAssignees")

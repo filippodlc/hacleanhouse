@@ -24,8 +24,9 @@ export function AuthBridge({ allowedOrigins = [] }: { allowedOrigins?: string[] 
       // Accetta solo messaggi del nostro protocollo provenienti dalla finestra padre...
       if (event.source !== window.parent) return;
       // ...e solo da un origin esplicitamente autorizzato (anti clickjacking / relay):
-      // un eventuale frame padre ostile non deve poter iniettare un token.
-      if (allowedOrigins.length > 0 && !allowedOrigins.includes(event.origin)) return;
+      // un eventuale frame padre ostile non deve poter iniettare un token. Fail-closed:
+      // senza allowlist configurata NON si accetta alcun token (mai accettare da chiunque).
+      if (allowedOrigins.length === 0 || !allowedOrigins.includes(event.origin)) return;
       const data = event.data;
       if (!data || data.type !== "hacleanhouse-auth" || typeof data.token !== "string") {
         return;
