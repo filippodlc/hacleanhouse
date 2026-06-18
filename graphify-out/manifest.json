@@ -55,9 +55,9 @@
     "semantic_hash": "10f52562ae1190aa1a07661970625957"
   },
   "/opt/homeassistant/hacleanhouse/src/app/actions.ts": {
-    "mtime": 1781765999.8378148,
-    "ast_hash": "6a8adbbaad6871b8ccd9e21666318682",
-    "semantic_hash": "6a8adbbaad6871b8ccd9e21666318682"
+    "mtime": 1781788909.4865816,
+    "ast_hash": "a1280efdce1e67af8c0166313bd759e7",
+    "semantic_hash": "a1280efdce1e67af8c0166313bd759e7"
   },
   "/opt/homeassistant/hacleanhouse/src/app/api/session/route.ts": {
     "mtime": 1781718100.809779,
@@ -110,9 +110,9 @@
     "semantic_hash": "60d4f512811c07072daa8e678520f476"
   },
   "/opt/homeassistant/hacleanhouse/src/components/manage-client.tsx": {
-    "mtime": 1781773837.7461543,
-    "ast_hash": "b6f470576af1a7e2bdb7cbbf737c0474",
-    "semantic_hash": "b6f470576af1a7e2bdb7cbbf737c0474"
+    "mtime": 1781788875.6861284,
+    "ast_hash": "0907347ca2ea486b6b9e5fb7245e7a1c",
+    "semantic_hash": "0907347ca2ea486b6b9e5fb7245e7a1c"
   },
   "/opt/homeassistant/hacleanhouse/src/components/occurrence-row.tsx": {
     "mtime": 1781712421.8777256,
@@ -210,14 +210,14 @@
     "semantic_hash": "4c905616f4a89df73af56db9abae3a2e"
   },
   "/opt/homeassistant/hacleanhouse/src/lib/freshness.ts": {
-    "mtime": 1781776727.2732048,
-    "ast_hash": "4b09889fff5d79b02c6cb25fadb5d8f0",
-    "semantic_hash": "4b09889fff5d79b02c6cb25fadb5d8f0"
+    "mtime": 1781789027.5241618,
+    "ast_hash": "d28a1da02c02b2f6a387bb7240a4847d",
+    "semantic_hash": "d28a1da02c02b2f6a387bb7240a4847d"
   },
   "/opt/homeassistant/hacleanhouse/src/lib/ha.ts": {
-    "mtime": 1781699707.0700564,
-    "ast_hash": "548871523a83f238a5ebebed1583e36a",
-    "semantic_hash": "548871523a83f238a5ebebed1583e36a"
+    "mtime": 1781788623.0787306,
+    "ast_hash": "b1ffa5ef87d3695c22ef2db80b69e166",
+    "semantic_hash": "b1ffa5ef87d3695c22ef2db80b69e166"
   },
   "/opt/homeassistant/hacleanhouse/src/lib/mdi-icons.ts": {
     "mtime": 1781712421.749724,
@@ -225,9 +225,9 @@
     "semantic_hash": "33a3dbce00030b2997e3a4bacb476bc1"
   },
   "/opt/homeassistant/hacleanhouse/src/lib/occurrences.ts": {
-    "mtime": 1781712421.8777256,
-    "ast_hash": "6d09ea802e73e49b2314d9e72ebf5ae6",
-    "semantic_hash": "6d09ea802e73e49b2314d9e72ebf5ae6"
+    "mtime": 1781788728.2121475,
+    "ast_hash": "064fcd9dc57779645d1cf534b8e554d4",
+    "semantic_hash": "064fcd9dc57779645d1cf534b8e554d4"
   },
   "/opt/homeassistant/hacleanhouse/src/lib/utils.ts": {
     "mtime": 1781687911.2819762,
@@ -245,9 +245,9 @@
     "semantic_hash": "9e09241799026ac05be315a2f0b50055"
   },
   "/opt/homeassistant/hacleanhouse/CLAUDE.md": {
-    "mtime": 1781687610.9061873,
-    "ast_hash": "5c27369b226fcf2be8a6cfe52224e767",
-    "semantic_hash": "5c27369b226fcf2be8a6cfe52224e767"
+    "mtime": 1781787677.6740658,
+    "ast_hash": "4695a5d645bb644025896963646be3b8",
+    "semantic_hash": "4695a5d645bb644025896963646be3b8"
   },
   "/opt/homeassistant/hacleanhouse/DESIGN.md": {
     "mtime": 1781708233.7534146,
@@ -288,5 +288,15 @@
     "mtime": 1781687580.9938102,
     "ast_hash": "a2760511c65806022ad20adf74370ff3",
     "semantic_hash": "a2760511c65806022ad20adf74370ff3"
+  },
+  "/opt/homeassistant/hacleanhouse/src/lib/calendar.ts": {
+    "mtime": 1781788737.9442785,
+    "ast_hash": "ac2c52df3f0eae330b1cf3cdab83b46a",
+    "semantic_hash": "ac2c52df3f0eae330b1cf3cdab83b46a"
+  },
+  "/opt/homeassistant/hacleanhouse/src/lib/dates.ts": {
+    "mtime": 1781788448.7163692,
+    "ast_hash": "177c9a58b348a614322d958e7904364a",
+    "semantic_hash": "177c9a58b348a614322d958e7904364a"
   }
 }
