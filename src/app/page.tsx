@@ -2,6 +2,7 @@ import { OccurrenceRow, type OccurrenceVM } from "@/components/occurrence-row";
 import { RoomIcon } from "@/components/room-icon";
 import { RoomStatusBadge } from "@/components/room-status-badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Unauthenticated } from "@/components/unauthenticated";
 import { getCurrentMember } from "@/lib/auth";
 import { listRoomFreshness } from "@/lib/freshness";
 import {
@@ -68,14 +69,7 @@ export default async function TodayPage() {
   const member = await getCurrentMember();
 
   if (!member) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          Non autenticato. Apri HaCleanHouse dal pannello <b>Pulizie</b> di Home
-          Assistant per accedere con il tuo utente.
-        </CardContent>
-      </Card>
-    );
+    return <Unauthenticated />;
   }
 
   const today = todayUTC();

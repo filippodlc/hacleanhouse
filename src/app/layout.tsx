@@ -4,6 +4,7 @@ import { ThemeBridge } from "@/components/theme-bridge";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Toaster } from "@/components/ui/sonner";
+import { getCurrentMember } from "@/lib/auth";
 import { env } from "@/lib/env";
 import type { Metadata } from "next";
 import { Geist_Mono, Roboto } from "next/font/google";
@@ -24,12 +25,15 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "HaCleanHouse",
-  description: "Gestione pulizie domestiche integrata con Home Assistant",
+  description: "Gestione delle pulizie domestiche",
+  // App privata: niente indicizzazione (oltre a public/robots.txt).
+  robots: { index: false, follow: false },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const member = await getCurrentMember();
   return (
     <html
       lang="it"
@@ -50,10 +54,12 @@ export default function RootLayout({
                   Clean<span className="text-primary">House</span>
                 </span>
               </Link>
-              <div className="flex items-center gap-1">
-                <MainNav />
-                <ThemeToggle />
-              </div>
+              {member && (
+                <div className="flex items-center gap-1">
+                  <MainNav />
+                  <ThemeToggle />
+                </div>
+              )}
             </div>
           </header>
           <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">{children}</main>

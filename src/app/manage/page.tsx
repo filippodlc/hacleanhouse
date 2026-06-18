@@ -1,20 +1,16 @@
 import { prisma } from "@/lib/db";
 import { getCurrentMember } from "@/lib/auth";
-import { Card, CardContent } from "@/components/ui/card";
 import { RoomManager, MemberManager, TaskManager } from "@/components/manage-client";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function ManagePage() {
   const member = await getCurrentMember();
   if (!member) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          Non autenticato. Apri HaCleanHouse dal pannello <b>Pulizie</b> di Home Assistant.
-        </CardContent>
-      </Card>
-    );
+    // Non autenticato: la rotta non deve essere raggiungibile → torna alla home
+    // (che mostra la schermata di accesso generica).
+    redirect("/");
   }
 
   const [rooms, members, tasks] = await Promise.all([
