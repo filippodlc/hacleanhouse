@@ -1,10 +1,10 @@
-import "server-only";
-import { cookies } from "next/headers";
-import { getIronSession, type IronSession } from "iron-session";
-import type { Member, House } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { validateHaToken } from "@/lib/ha";
+import type { House, Member } from "@prisma/client";
+import { getIronSession, type IronSession } from "iron-session";
+import { cookies } from "next/headers";
+import "server-only";
 
 export type SessionData = {
   memberId?: string;
@@ -45,6 +45,8 @@ export async function ensureDefaultHouse(): Promise<House> {
 
 /**
  * Trova (o crea al primo accesso) il Member legato a un utente HA.
+ * NB: usato solo dal mock di sviluppo. Per il login reale usare `provisionMember`,
+ * che applica il controllo d'accesso (allowlist).
  */
 export async function getOrCreateMember(
   haUserId: string,
@@ -59,14 +61,37 @@ export async function getOrCreateMember(
 }
 
 /**
+ * Risolve il Member per un utente HA applicando il controllo d'accesso:
+ *  - se esiste già un Member per quell'haUserId -> accesso consentito;
+ *  - altrimenti il provisioning avviene SOLO se l'haUserId è in allowlist
+ *    (`HACLEANHOUSE_ALLOWED_HA_USERS`); in caso contrario ritorna `null`.
+ * Questo evita che qualunque utente HA ottenga automaticamente accesso una volta
+ * che l'app è esposta. Nuovi membri si aggiungono dalla UI Gestione (admin).
+ */
+export async function provisionMember(
+  haUserId: string,
+  displayName: string,
+): Promise<Member | null> {
+  const found = await prisma.member.findUnique({ where: { haUserId } });
+  if (found) return found;
+  if (!env.allowedHaUserIds.includes(haUserId)) return null;
+  const house = await ensureDefaultHouse();
+  return prisma.member.create({
+    data: { haUserId, displayName, houseId: house.id },
+  });
+}
+
+/**
  * Stabilisce la sessione a partire da un access token HA (flusso del panel):
- * valida il token, ricava l'utente certo, fa l'upsert del Member e salva la sessione.
- * Ritorna il Member oppure null se il token non è valido.
+ * valida il token, ricava l'utente certo, applica il controllo d'accesso e salva
+ * la sessione. Ritorna il Member oppure null se il token non è valido o l'utente
+ * non è autorizzato.
  */
 export async function loginWithHaToken(token: string): Promise<Member | null> {
   const haUser = await validateHaToken(token);
   if (!haUser) return null;
-  const member = await getOrCreateMember(haUser.haUserId, haUser.name);
+  const member = await provisionMember(haUser.haUserId, haUser.name);
+  if (!member) return null;
   const session = await getSession();
   session.memberId = member.id;
   session.haUserId = member.haUserId;

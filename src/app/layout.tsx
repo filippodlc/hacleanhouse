@@ -4,6 +4,7 @@ import { ThemeBridge } from "@/components/theme-bridge";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Toaster } from "@/components/ui/sonner";
+import { env } from "@/lib/env";
 import type { Metadata } from "next";
 import { Geist_Mono, Roboto } from "next/font/google";
 import Link from "next/link";
@@ -37,7 +38,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider>
-          <AuthBridge />
+          <AuthBridge allowedOrigins={env.allowedParentOrigins} />
           <ThemeBridge />
           <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 /**
  * Ponte di autenticazione lato client.
@@ -15,14 +15,17 @@ import { useRouter } from "next/navigation";
  * Il token viene comunque validato dal server: i controlli qui sono solo difensivi.
  * In sviluppo (app aperta direttamente) nessun messaggio arriva e si usa il dev mock.
  */
-export function AuthBridge() {
+export function AuthBridge({ allowedOrigins = [] }: { allowedOrigins?: string[] }) {
   const router = useRouter();
   const lastToken = useRef<string | null>(null);
 
   useEffect(() => {
     async function onMessage(event: MessageEvent) {
-      // Accetta solo messaggi del nostro protocollo provenienti dalla finestra padre.
+      // Accetta solo messaggi del nostro protocollo provenienti dalla finestra padre...
       if (event.source !== window.parent) return;
+      // ...e solo da un origin esplicitamente autorizzato (anti clickjacking / relay):
+      // un eventuale frame padre ostile non deve poter iniettare un token.
+      if (allowedOrigins.length > 0 && !allowedOrigins.includes(event.origin)) return;
       const data = event.data;
       if (!data || data.type !== "hacleanhouse-auth" || typeof data.token !== "string") {
         return;
