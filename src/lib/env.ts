@@ -16,6 +16,11 @@ export const env = {
   // entity_id del calendario Google in HA (es. calendar.famiglia). Punto aperto del DESIGN.
   haCalendarEntity: process.env.HA_CALENDAR_ENTITY ?? "",
 
+  // Token Bearer per le API server-to-server (es. HA che chiama GET /api/today
+  // per la notifica mattutina). Non c'è cookie di sessione in quel flusso.
+  // Vuoto = endpoint disabilitato (nega ogni richiesta).
+  apiToken: process.env.HACLEANHOUSE_API_TOKEN ?? "",
+
   // Segreto per cifrare il cookie di sessione (iron-session, >= 32 char).
   sessionSecret:
     process.env.SESSION_SECRET ??
