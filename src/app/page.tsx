@@ -86,9 +86,15 @@ export default async function TodayPage() {
     to: new Date(today.getTime() + UPCOMING_LOOKAHEAD_DAYS * MS_PER_DAY),
   });
 
+  // Limite superiore del cluster "I prossimi 7 giorni" (la finestra dati è più
+  // ampia, vedi UPCOMING_LOOKAHEAD_DAYS, ma qui mostriamo solo una settimana).
+  const weekAheadISO = new Date(today.getTime() + 7 * MS_PER_DAY).toISOString().slice(0, 10);
+
   const overdue = occ.filter((o) => o.dueDate < todayISO && o.status === "PENDING");
   const todays = occ.filter((o) => o.dueDate === todayISO);
-  const upcoming = occ.filter((o) => o.dueDate > todayISO && o.status === "PENDING");
+  const upcoming = occ.filter(
+    (o) => o.dueDate > todayISO && o.dueDate <= weekAheadISO && o.status === "PENDING",
+  );
 
   // Raggruppa le occorrenze future per data (etichetta leggibile).
   const upcomingByDate = new Map<string, OccurrenceVM[]>();
@@ -122,70 +128,77 @@ export default async function TodayPage() {
   }).format(new Date());
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="font-heading text-2xl font-semibold capitalize tracking-tight">{dateLabel}</h1>
         <p className="text-sm text-muted-foreground">
           Ciao {member.displayName} · {doneCount}/{todays.length} completate
         </p>
-        <div className="mt-3">
-          <WorkloadSummary occ={todays.filter((o) => o.status === "PENDING")} />
-        </div>
       </div>
 
-      {overdue.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-medium text-destructive">
-            In ritardo ({overdue.length})
-          </h2>
-          <WorkloadSummary occ={overdue} />
-          <div className="space-y-2">
-            {overdue.map((o) => (
-              <OccurrenceRow key={o.id} occ={o} showDate />
+      {/* Cluster: Oggi — prima i badge dei tempi, poi la lista per stanza. */}
+      <section className="space-y-3">
+        <WorkloadSummary occ={todays.filter((o) => o.status === "PENDING")} />
+        {todays.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              Nessuna attività per oggi. Crea dei task nella sezione{" "}
+              <b>Gestione</b>.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {[...byRoom.entries()].map(([room, items]) => (
+              <div key={room} className="space-y-2">
+                <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <RoomIcon icon={items[0]?.roomIcon} />
+                  {room}
+                </h3>
+                <div className="space-y-2">
+                  {items.map((o) => (
+                    <OccurrenceRow key={o.id} occ={o} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
-      {todays.length === 0 ? (
+      {/* Cluster: In ritardo — prima i tempi, poi la lista delle task arretrate. */}
+      {overdue.length > 0 && (
         <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Nessuna attività per oggi. Crea dei task nella sezione{" "}
-            <b>Gestione</b>.
-          </CardContent>
-        </Card>
-      ) : (
-        [...byRoom.entries()].map(([room, items]) => (
-          <section key={room} className="space-y-2">
-            <h2 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <RoomIcon icon={items[0]?.roomIcon} />
-              {room}
+          <CardContent className="space-y-3 pt-2 pb-4">
+            <h2 className="font-heading text-lg font-semibold tracking-tight text-destructive">
+              In ritardo ({overdue.length})
             </h2>
+            <WorkloadSummary occ={overdue} />
             <div className="space-y-2">
-              {items.map((o) => (
-                <OccurrenceRow key={o.id} occ={o} />
+              {overdue.map((o) => (
+                <OccurrenceRow key={o.id} occ={o} showDate />
               ))}
             </div>
-          </section>
-        ))
+          </CardContent>
+        </Card>
       )}
 
+      {/* Cluster: I prossimi 7 giorni — nessun conteggio, solo suddivisione per giornata. */}
       {upcoming.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            Prossime ({upcoming.length})
-          </h2>
-          {[...upcomingByDate.entries()].map(([label, items]) => (
-            <div key={label} className="space-y-2">
-              <h3 className="text-xs font-medium capitalize text-muted-foreground">{label}</h3>
-              <div className="space-y-2">
-                {items.map((o) => (
-                  <OccurrenceRow key={o.id} occ={o} />
-                ))}
+        <Card>
+          <CardContent className="space-y-3 pt-2 pb-4">
+            <h2 className="font-heading text-lg font-semibold tracking-tight">I prossimi 7 giorni</h2>
+            {[...upcomingByDate.entries()].map(([label, items]) => (
+              <div key={label} className="space-y-2">
+                <h3 className="text-xs font-medium capitalize text-muted-foreground">{label}</h3>
+                <div className="space-y-2">
+                  {items.map((o) => (
+                    <OccurrenceRow key={o.id} occ={o} />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </section>
+            ))}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

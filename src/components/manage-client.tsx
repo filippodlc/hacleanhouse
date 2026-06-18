@@ -11,6 +11,7 @@ import {
   updateRoom,
   updateTask,
 } from "@/app/actions";
+import { ConfirmButton } from "@/components/confirm-button";
 import { IconPicker } from "@/components/icon-picker";
 import { RoomIcon } from "@/components/room-icon";
 import { Badge } from "@/components/ui/badge";
@@ -367,13 +368,15 @@ export function TaskManager({
           <Button size="icon" variant="ghost" onClick={() => openEdit(t)}>
             <Pencil className="size-4" />
           </Button>
-          <Button
+          <ConfirmButton
             size="icon"
             variant="ghost"
-            onClick={() => run(() => deleteTask(t.id), () => {}, "Task eliminato")}
+            title="Eliminare il task?"
+            description={`"${t.name}" e tutte le sue occorrenze verranno rimossi. L'operazione non è reversibile.`}
+            onConfirm={() => run(() => deleteTask(t.id), () => {}, "Task eliminato")}
           >
             <Trash2 className="size-4" />
-          </Button>
+          </ConfirmButton>
         </div>
       ))}
 
@@ -446,13 +449,15 @@ export function RoomManager({ rooms }: { rooms: RoomVM[] }) {
           <Button size="icon" variant="ghost" onClick={() => openEdit(r)}>
             <Pencil className="size-4" />
           </Button>
-          <Button
+          <ConfirmButton
             size="icon"
             variant="ghost"
-            onClick={() => run(() => deleteRoom(r.id), () => {}, "Stanza eliminata")}
+            title="Eliminare la stanza?"
+            description={`"${r.name}" verrà rimossa. L'operazione non è reversibile.`}
+            onConfirm={() => run(() => deleteRoom(r.id), () => {}, "Stanza eliminata")}
           >
             <Trash2 className="size-4" />
-          </Button>
+          </ConfirmButton>
         </div>
       ))}
 
@@ -568,13 +573,15 @@ export function MemberManager({
             </Button>
           )}
           {canManage && m.id !== currentMemberId && (
-            <Button
+            <ConfirmButton
               size="icon"
               variant="ghost"
-              onClick={() => run(() => deleteMember(m.id), () => {}, "Membro eliminato")}
+              title="Eliminare il membro?"
+              description={`"${m.displayName}" verrà rimosso. L'operazione non è reversibile.`}
+              onConfirm={() => run(() => deleteMember(m.id), () => {}, "Membro eliminato")}
             >
               <Trash2 className="size-4" />
-            </Button>
+            </ConfirmButton>
           )}
         </div>
       ))}
