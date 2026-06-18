@@ -1,7 +1,9 @@
 import { OccurrenceRow, type OccurrenceVM } from "@/components/occurrence-row";
 import { RoomIcon } from "@/components/room-icon";
+import { RoomStatusBadge } from "@/components/room-status-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentMember } from "@/lib/auth";
+import { listRoomFreshness } from "@/lib/freshness";
 import {
     listOccurrences,
     OVERDUE_LOOKBACK_DAYS,
@@ -79,12 +81,16 @@ export default async function TodayPage() {
   const today = todayUTC();
   const todayISO = today.toISOString().slice(0, 10);
 
-  // Occorrenze virtuali (ricorrenza + eccezioni) nella finestra utile.
-  const occ = await listOccurrences({
-    houseId: member.houseId,
-    from: new Date(today.getTime() - OVERDUE_LOOKBACK_DAYS * MS_PER_DAY),
-    to: new Date(today.getTime() + UPCOMING_LOOKAHEAD_DAYS * MS_PER_DAY),
-  });
+  // Occorrenze virtuali (ricorrenza + eccezioni) nella finestra utile + stato
+  // di pulizia per stanza (riepilogo compatto, dettaglio su /stato).
+  const [occ, roomFreshness] = await Promise.all([
+    listOccurrences({
+      houseId: member.houseId,
+      from: new Date(today.getTime() - OVERDUE_LOOKBACK_DAYS * MS_PER_DAY),
+      to: new Date(today.getTime() + UPCOMING_LOOKAHEAD_DAYS * MS_PER_DAY),
+    }),
+    listRoomFreshness({ houseId: member.houseId }),
+  ]);
 
   // Limite superiore del cluster "I prossimi 7 giorni" (la finestra dati è più
   // ampia, vedi UPCOMING_LOOKAHEAD_DAYS, ma qui mostriamo solo una settimana).
@@ -129,6 +135,15 @@ export default async function TodayPage() {
 
   return (
     <div className="space-y-8">
+      {/* Riepilogo stato pulizia: un badge per stanza, clic = dettaglio per task. */}
+      {roomFreshness.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 border-b pt-2 pb-6">
+          {roomFreshness.map((room) => (
+            <RoomStatusBadge key={room.roomId} room={room} />
+          ))}
+        </div>
+      )}
+
       <div>
         <h1 className="font-heading text-2xl font-semibold capitalize tracking-tight">{dateLabel}</h1>
         <p className="text-sm text-muted-foreground">
