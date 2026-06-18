@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
   // Build autosufficiente per l'immagine Docker (server.js + deps minime)
   output: "standalone",
 
+  // Solo DEV: host da cui il browser carica l'app (iframe HA + dominio Tunnel),
+  // autorizzati a richiedere le risorse HMR di Next (/_next/webpack-hmr). Senza
+  // questo l'hot-reload è bloccato cross-origin. Ignorato in produzione.
+  allowedDevOrigins: ["cleanhouse.filippodlc.com", "homeassistant", "home.filippodlc.com"],
+
   // Anti-clickjacking: l'app è incorniciata SOLO dal custom panel di HA. Limita gli
   // origin che possono fare framing a quelli noti (no X-Frame-Options: DENY perché
   // l'app DEVE poter essere incorniciata da HA).

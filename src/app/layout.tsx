@@ -46,9 +46,8 @@ export default function RootLayout({
                 href="/"
                 className="flex items-center gap-2 font-heading font-semibold tracking-tight"
               >
-                <span className="text-lg">🧹</span>
                 <span>
-                  HaClean<span className="text-primary">House</span>
+                  Clean<span className="text-primary">House</span>
                 </span>
               </Link>
               <div className="flex items-center gap-1">

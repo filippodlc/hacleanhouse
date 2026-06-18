@@ -135,7 +135,7 @@ function TaskForm({
   const [endMode, setEndMode] = useState<"COUNT" | "DATE" | "NEVER">(initialEndMode);
   const [repeatCount, setRepeatCount] = useState(String(task?.repeatCount ?? 4));
   const [endDate, setEndDate] = useState(task?.endDate ?? "");
-  const [assignmentMode, setAssignmentMode] = useState(task?.assignmentMode ?? "ROTATION");
+  const [assignmentMode, setAssignmentMode] = useState(task?.assignmentMode ?? "FIXED");
   const [assignedMemberIds, setAssignedMemberIds] = useState<string[]>(
     task?.assignedMemberIds ?? [],
   );
@@ -175,7 +175,7 @@ function TaskForm({
         <Label>Nome</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Es. Aspirare salotto" />
       </div>      
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <div className="space-y-1">
           <Label>Stanza</Label>
           <Select value={roomId} onValueChange={setRoomId}>
@@ -212,7 +212,7 @@ function TaskForm({
           </Select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {frequency === "EVERY_N_DAYS" && (
           <div className="space-y-1">
             <Label>Ogni N giorni</Label>
@@ -220,7 +220,7 @@ function TaskForm({
           </div>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <Label>Data di inizio</Label>
           <Input
@@ -242,7 +242,7 @@ function TaskForm({
         </div>
       </div>
       {endMode !== "NEVER" && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {endMode === "COUNT" ? (
             <div className="space-y-1">
               <Label>Numero di occorrenze</Label>
@@ -296,7 +296,7 @@ function TaskForm({
           )}
         </div>
       )}
-      <DialogFooter className="sticky bottom-0">
+      <DialogFooter>
         <Button
           onClick={submit}
           disabled={
@@ -378,7 +378,7 @@ export function TaskManager({
       ))}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-y-auto sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editing ? "Modifica task" : "Nuovo task"}</DialogTitle>
           </DialogHeader>
@@ -466,7 +466,7 @@ export function RoomManager({ rooms }: { rooms: RoomVM[] }) {
               <Label>Nome</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Es. Cucina" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label>Icona</Label>
                 <IconPicker value={icon} onChange={setIcon} />
@@ -598,7 +598,7 @@ export function MemberManager({
                 placeholder="ID utente di Home Assistant"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label>person entity (opz.)</Label>
                 <Input
