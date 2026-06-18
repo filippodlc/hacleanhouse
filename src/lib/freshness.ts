@@ -1,42 +1,13 @@
 import { prisma } from "@/lib/db";
-import { firstCadenceOnOrAfter, nextCadenceAfter } from "@/lib/occurrences";
-import { Frequency, OccurrenceStatus, type Task } from "@prisma/client";
+import { MS_PER_DAY, dateOnlyUTC, diffDays, isoDate } from "@/lib/dates";
+import { firstCadenceOnOrAfter, frequencyIntervalDays, nextCadenceAfter } from "@/lib/occurrences";
+import { OccurrenceStatus } from "@prisma/client";
 import "server-only";
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-/** Mezzanotte UTC della data data (azzera l'orario). */
-function dateOnlyUTC(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-
-function diffDays(a: Date, b: Date): number {
-  return Math.round((dateOnlyUTC(a).getTime() - dateOnlyUTC(b).getTime()) / MS_PER_DAY);
-}
-
-function isoDate(d: Date): string {
-  return dateOnlyUTC(d).toISOString().slice(0, 10);
-}
 
 function clamp01(x: number): number {
   return x < 0 ? 0 : x > 1 ? 1 : x;
 }
 
-/** Intervallo nominale in giorni della ricorrenza (MONTHLY ≈ 30). */
-function nominalIntervalDays(task: Task): number {
-  switch (task.frequency) {
-    case Frequency.DAILY:
-      return 1;
-    case Frequency.WEEKLY:
-      return 7;
-    case Frequency.EVERY_N_DAYS:
-      return task.everyNDays && task.everyNDays > 0 ? task.everyNDays : 1;
-    case Frequency.MONTHLY:
-      return 30;
-    default:
-      return 1;
-  }
-}
 
 export type TaskFreshnessVM = {
   taskId: string;
@@ -114,7 +85,7 @@ export async function listRoomFreshness(opts: {
       // intervallo prima della scadenza.
       nextDue = firstCadenceOnOrAfter(task, task.startDate);
       if (!nextDue) continue;
-      anchor = new Date(nextDue.getTime() - nominalIntervalDays(task) * MS_PER_DAY);
+      anchor = new Date(nextDue.getTime() - frequencyIntervalDays(task) * MS_PER_DAY);
     }
     // Serie finita (repeatCount/endDate esauriti): niente più scadenze → escluso.
     if (!nextDue) continue;

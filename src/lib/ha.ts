@@ -3,24 +3,26 @@ import { env, haWebsocketUrl } from "@/lib/env";
 
 export type HaUser = { haUserId: string; name: string };
 
+type WsCommand = Record<string, unknown> & { type: string };
+
 /**
- * Valida un access token di Home Assistant aprendo una connessione WebSocket
- * e chiedendo l'utente corrente. È l'unico modo *certo* di legare il token a un
- * utente HA (il frontend ufficiale usa lo stesso comando `auth/current_user`).
- *
- * Ritorna l'utente se il token è valido, altrimenti `null`.
+ * Helper interno: apre una connessione WS verso HA, esegue l'auth handshake,
+ * poi chiama `onAuthOk` per inviare il comando specifico e `onResult` per
+ * interpretare il messaggio `result`. Gestisce timeout, settled flag, cleanup.
  */
-export function validateHaToken(token: string): Promise<HaUser | null> {
+function withHaWs<T>(
+  token: string,
+  fallback: T,
+  timeoutMs: number,
+  onAuthOk: (ws: WebSocket) => void,
+  onResult: (msg: Record<string, unknown>, finish: (v: T) => void) => void
+): Promise<T> {
   return new Promise((resolve) => {
     let settled = false;
-    const finish = (value: HaUser | null) => {
+    const finish = (value: T) => {
       if (settled) return;
       settled = true;
-      try {
-        ws.close();
-      } catch {
-        /* noop */
-      }
+      try { ws.close(); } catch { /* noop */ }
       clearTimeout(timer);
       resolve(value);
     };
@@ -29,38 +31,55 @@ export function validateHaToken(token: string): Promise<HaUser | null> {
     try {
       ws = new WebSocket(haWebsocketUrl());
     } catch {
-      resolve(null);
+      resolve(fallback);
       return;
     }
 
-    const timer = setTimeout(() => finish(null), 8000);
+    const timer = setTimeout(() => finish(fallback), timeoutMs);
 
     ws.addEventListener("message", (event) => {
-      let msg: { type?: string; success?: boolean; result?: { id?: string; name?: string } };
-      try {
-        msg = JSON.parse(event.data as string);
-      } catch {
-        return;
-      }
+      let msg: Record<string, unknown>;
+      try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
+      catch { return; }
 
       if (msg.type === "auth_required") {
         ws.send(JSON.stringify({ type: "auth", access_token: token }));
       } else if (msg.type === "auth_ok") {
-        ws.send(JSON.stringify({ id: 1, type: "auth/current_user" }));
+        onAuthOk(ws);
       } else if (msg.type === "auth_invalid") {
-        finish(null);
+        finish(fallback);
       } else if (msg.type === "result") {
-        if (msg.success && msg.result?.id) {
-          finish({ haUserId: msg.result.id, name: msg.result.name ?? "Utente HA" });
-        } else {
-          finish(null);
-        }
+        onResult(msg, finish);
       }
     });
 
-    ws.addEventListener("error", () => finish(null));
-    ws.addEventListener("close", () => finish(null));
+    ws.addEventListener("error", () => finish(fallback));
+    ws.addEventListener("close", () => finish(fallback));
   });
+}
+
+/**
+ * Valida un access token di Home Assistant aprendo una connessione WebSocket
+ * e chiedendo l'utente corrente. È l'unico modo *certo* di legare il token a un
+ * utente HA (il frontend ufficiale usa lo stesso comando `auth/current_user`).
+ *
+ * Ritorna l'utente se il token è valido, altrimenti `null`.
+ */
+export function validateHaToken(token: string): Promise<HaUser | null> {
+  return withHaWs<HaUser | null>(
+    token,
+    null,
+    8000,
+    (ws) => ws.send(JSON.stringify({ id: 1, type: "auth/current_user" })),
+    (msg, finish) => {
+      const result = msg.result as { id?: string; name?: string } | undefined;
+      if (msg.success && result?.id) {
+        finish({ haUserId: result.id, name: result.name ?? "Utente HA" });
+      } else {
+        finish(null);
+      }
+    }
+  );
 }
 
 function addOneDay(isoDate: string): string {
@@ -79,58 +98,20 @@ function addOneDay(isoDate: string): string {
 // l'evento completo. Il delete (WebSocket) supporta `recurrence_id` +
 // `recurrence_range` (NONE | THISANDFUTURE).
 
-type WsCommand = Record<string, unknown> & { type: string };
-
 /**
  * Esegue un singolo comando WebSocket autenticato su HA e indica se è andato a
- * buon fine. Riusa lo stesso handshake di `validateHaToken`.
+ * buon fine.
  */
 function haWsCommand(token: string, command: WsCommand): Promise<boolean> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (value: boolean) => {
-      if (settled) return;
-      settled = true;
-      try {
-        ws.close();
-      } catch {
-        /* noop */
-      }
-      clearTimeout(timer);
-      resolve(value);
-    };
-
-    let ws: WebSocket;
-    try {
-      ws = new WebSocket(haWebsocketUrl());
-    } catch {
-      resolve(false);
-      return;
+  return withHaWs<boolean>(
+    token,
+    false,
+    10000,
+    (ws) => ws.send(JSON.stringify({ id: 1, ...command })),
+    (msg, finish) => {
+      if (msg.id === 1) finish(!!msg.success);
     }
-
-    const timer = setTimeout(() => finish(false), 10000);
-
-    ws.addEventListener("message", (event) => {
-      let msg: { type?: string; id?: number; success?: boolean };
-      try {
-        msg = JSON.parse(event.data as string);
-      } catch {
-        return;
-      }
-      if (msg.type === "auth_required") {
-        ws.send(JSON.stringify({ type: "auth", access_token: token }));
-      } else if (msg.type === "auth_ok") {
-        ws.send(JSON.stringify({ id: 1, ...command }));
-      } else if (msg.type === "auth_invalid") {
-        finish(false);
-      } else if (msg.type === "result" && msg.id === 1) {
-        finish(!!msg.success);
-      }
-    });
-
-    ws.addEventListener("error", () => finish(false));
-    ws.addEventListener("close", () => finish(false));
-  });
+  );
 }
 
 export type HaCalEvent = {

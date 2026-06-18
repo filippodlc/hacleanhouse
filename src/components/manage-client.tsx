@@ -39,6 +39,8 @@ import { toast } from "sonner";
 
 type Option = { id: string; name: string };
 
+// --- Shared hooks / primitives --------------------------------------------
+
 function useAction() {
   const [pending, startTransition] = useTransition();
   function run(fn: () => Promise<unknown>, onOk: () => void, okMsg: string) {
@@ -53,6 +55,15 @@ function useAction() {
     });
   }
   return { pending, run };
+}
+
+function useEntityEditor<T>() {
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<T | undefined>(undefined);
+  function openNew() { setEditing(undefined); setOpen(true); }
+  function openEdit(item: T) { setEditing(item); setOpen(true); }
+  function close() { setOpen(false); }
+  return { open, setOpen, editing, openNew, openEdit, close };
 }
 
 function SectionCard({
@@ -72,6 +83,57 @@ function SectionCard({
       </CardHeader>
       <CardContent className="space-y-2">{children}</CardContent>
     </Card>
+  );
+}
+
+function EntityRow({
+  left,
+  children,
+  badge,
+  onEdit,
+  onDelete,
+  deleteTitle,
+  deleteDescription,
+}: {
+  left?: ReactNode;
+  children: ReactNode;
+  badge?: ReactNode;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  deleteTitle?: string;
+  deleteDescription?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-md border p-2 transition-colors hover:bg-muted/50">
+      {left}
+      {children}
+      {badge}
+      {onEdit && (
+        <Button size="icon" variant="ghost" onClick={onEdit}>
+          <Pencil className="size-4" />
+        </Button>
+      )}
+      {onDelete && (
+        <ConfirmButton
+          size="icon"
+          variant="ghost"
+          title={deleteTitle ?? "Eliminare?"}
+          description={deleteDescription ?? "L'operazione non è reversibile."}
+          onConfirm={onDelete}
+        >
+          <Trash2 className="size-4" />
+        </ConfirmButton>
+      )}
+    </div>
+  );
+}
+
+function FormField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      {children}
+    </div>
   );
 }
 
@@ -172,22 +234,19 @@ function TaskForm({
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1">
-        <Label>Nome</Label>
+      <FormField label="Nome">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Es. Aspirare salotto" />
-      </div>      
+      </FormField>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        <div className="space-y-1">
-          <Label>Stanza</Label>
+        <FormField label="Stanza">
           <Select value={roomId} onValueChange={setRoomId}>
             <SelectTrigger><SelectValue placeholder="Stanza" /></SelectTrigger>
             <SelectContent>
               {rooms.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1">
-          <Label>Priorità</Label>
+        </FormField>
+        <FormField label="Priorità">
           <Select value={priority} onValueChange={setPriority}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -196,13 +255,11 @@ function TaskForm({
               <SelectItem value="3">Bassa</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1">
-        <Label>Minuti stimati</Label>
+        </FormField>
+        <FormField label="Minuti stimati">
           <Input type="number" min={1} value={estMinutes} onChange={(e) => setEstMinutes(e.target.value)} />
-        </div>
-        <div className="space-y-1">
-          <Label>Frequenza</Label>
+        </FormField>
+        <FormField label="Frequenza">
           <Select value={frequency} onValueChange={setFrequency}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -211,27 +268,20 @@ function TaskForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {frequency === "EVERY_N_DAYS" && (
-          <div className="space-y-1">
-            <Label>Ogni N giorni</Label>
+      {frequency === "EVERY_N_DAYS" && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FormField label="Ogni N giorni">
             <Input type="number" min={1} value={everyNDays} onChange={(e) => setEveryNDays(e.target.value)} />
-          </div>
-        )}
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <Label>Data di inizio</Label>
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
+          </FormField>
         </div>
-        <div className="space-y-1">
-          <Label>Fine</Label>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <FormField label="Data di inizio">
+          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        </FormField>
+        <FormField label="Fine">
           <Select value={endMode} onValueChange={(v) => setEndMode(v as "COUNT" | "DATE" | "NEVER")}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -240,20 +290,18 @@ function TaskForm({
               <SelectItem value="NEVER">Mai</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
       </div>
       {endMode !== "NEVER" && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {endMode === "COUNT" ? (
-            <div className="space-y-1">
-              <Label>Numero di occorrenze</Label>
+            <FormField label="Numero di occorrenze">
               <Input type="number" min={1} value={repeatCount} onChange={(e) => setRepeatCount(e.target.value)} />
-            </div>
+            </FormField>
           ) : (
-            <div className="space-y-1">
-              <Label>Fino al</Label>
+            <FormField label="Fino al">
               <Input type="date" min={startDate} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </div>
+            </FormField>
           )}
         </div>
       )}
@@ -263,8 +311,7 @@ function TaskForm({
           prima occorrenza futura in poi; le occorrenze passate restano invariate.
         </p>
       )}
-      <div className="space-y-1">
-        <Label>Assegnazione</Label>
+      <FormField label="Assegnazione">
         <Select value={assignmentMode} onValueChange={setAssignmentMode}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -272,10 +319,9 @@ function TaskForm({
             <SelectItem value="FIXED">Membri fissi</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </FormField>
       {assignmentMode === "FIXED" && (
-        <div className="space-y-1">
-          <Label>Membri</Label>
+        <FormField label="Membri">
           <div className="flex flex-wrap gap-2">
             {members.map((m) => {
               const on = assignedMemberIds.includes(m.id);
@@ -295,7 +341,7 @@ function TaskForm({
           {members.length === 0 && (
             <p className="text-xs text-muted-foreground">Nessun membro disponibile.</p>
           )}
-        </div>
+        </FormField>
       )}
       <DialogFooter>
         <Button
@@ -324,18 +370,7 @@ export function TaskManager({
   members: Option[];
 }) {
   const { run } = useAction();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<TaskVM | undefined>(undefined);
-
-  function openNew() {
-    setEditing(undefined);
-    setOpen(true);
-  }
-  function openEdit(t: TaskVM) {
-    setEditing(t);
-    setOpen(true);
-  }
-
+  const { open, setOpen, editing, openNew, openEdit } = useEntityEditor<TaskVM>();
   const canAdd = rooms.length > 0;
 
   return (
@@ -351,7 +386,14 @@ export function TaskManager({
         <p className="text-sm text-muted-foreground">Nessun task. {canAdd ? "" : "Crea prima una stanza."}</p>
       )}
       {tasks.map((t) => (
-        <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 transition-colors hover:bg-muted/50">
+        <EntityRow
+          key={t.id}
+          badge={<Badge variant="outline">{t.estMinutes}m</Badge>}
+          onEdit={() => openEdit(t)}
+          onDelete={() => run(() => deleteTask(t.id), () => {}, "Task eliminato")}
+          deleteTitle="Eliminare il task?"
+          deleteDescription={`"${t.name}" e tutte le sue occorrenze verranno rimossi. L'operazione non è reversibile.`}
+        >
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium">{t.name}</div>
             <div className="text-xs text-muted-foreground">
@@ -364,20 +406,7 @@ export function TaskManager({
                 : "Rotazione"}
             </div>
           </div>
-          <Badge variant="outline">{t.estMinutes}m</Badge>
-          <Button size="icon" variant="ghost" onClick={() => openEdit(t)}>
-            <Pencil className="size-4" />
-          </Button>
-          <ConfirmButton
-            size="icon"
-            variant="ghost"
-            title="Eliminare il task?"
-            description={`"${t.name}" e tutte le sue occorrenze verranno rimossi. L'operazione non è reversibile.`}
-            onConfirm={() => run(() => deleteTask(t.id), () => {}, "Task eliminato")}
-          >
-            <Trash2 className="size-4" />
-          </ConfirmButton>
-        </div>
+        </EntityRow>
       ))}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -403,30 +432,22 @@ type RoomVM = { id: string; name: string; icon: string; order: number };
 
 export function RoomManager({ rooms }: { rooms: RoomVM[] }) {
   const { pending, run } = useAction();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<RoomVM | undefined>();
+  const { open, setOpen, editing, openNew: _openNew, openEdit: _openEdit } = useEntityEditor<RoomVM>();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("mdi:broom");
   const [order, setOrder] = useState("0");
 
   function openNew() {
-    setEditing(undefined);
-    setName("");
-    setIcon("mdi:broom");
-    setOrder("0");
-    setOpen(true);
+    setName(""); setIcon("mdi:broom"); setOrder("0");
+    _openNew();
   }
   function openEdit(r: RoomVM) {
-    setEditing(r);
-    setName(r.name);
-    setIcon(r.icon);
-    setOrder(String(r.order));
-    setOpen(true);
+    setName(r.name); setIcon(r.icon); setOrder(String(r.order));
+    _openEdit(r);
   }
   function submit() {
-    const payload = { name, icon, order };
     run(
-      () => (editing ? updateRoom(editing.id, payload) : createRoom(payload)),
+      () => (editing ? updateRoom(editing.id, { name, icon, order }) : createRoom({ name, icon, order })),
       () => setOpen(false),
       editing ? "Stanza aggiornata" : "Stanza creata",
     );
@@ -443,22 +464,16 @@ export function RoomManager({ rooms }: { rooms: RoomVM[] }) {
     >
       {rooms.length === 0 && <p className="text-sm text-muted-foreground">Nessuna stanza.</p>}
       {rooms.map((r) => (
-        <div key={r.id} className="flex items-center gap-2 rounded-md border p-2 transition-colors hover:bg-muted/50">
-          <RoomIcon icon={r.icon} className="size-5 text-muted-foreground" />
+        <EntityRow
+          key={r.id}
+          left={<RoomIcon icon={r.icon} className="size-5 text-muted-foreground" />}
+          onEdit={() => openEdit(r)}
+          onDelete={() => run(() => deleteRoom(r.id), () => {}, "Stanza eliminata")}
+          deleteTitle="Eliminare la stanza?"
+          deleteDescription={`"${r.name}" verrà rimossa. L'operazione non è reversibile.`}
+        >
           <span className="flex-1 text-sm">{r.name}</span>
-          <Button size="icon" variant="ghost" onClick={() => openEdit(r)}>
-            <Pencil className="size-4" />
-          </Button>
-          <ConfirmButton
-            size="icon"
-            variant="ghost"
-            title="Eliminare la stanza?"
-            description={`"${r.name}" verrà rimossa. L'operazione non è reversibile.`}
-            onConfirm={() => run(() => deleteRoom(r.id), () => {}, "Stanza eliminata")}
-          >
-            <Trash2 className="size-4" />
-          </ConfirmButton>
-        </div>
+        </EntityRow>
       ))}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -467,24 +482,19 @@ export function RoomManager({ rooms }: { rooms: RoomVM[] }) {
             <DialogTitle>{editing ? "Modifica stanza" : "Nuova stanza"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Nome</Label>
+            <FormField label="Nome">
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Es. Cucina" />
-            </div>
+            </FormField>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label>Icona</Label>
+              <FormField label="Icona">
                 <IconPicker value={icon} onChange={setIcon} />
-              </div>
-              <div className="space-y-1">
-                <Label>Ordine</Label>
+              </FormField>
+              <FormField label="Ordine">
                 <Input type="number" value={order} onChange={(e) => setOrder(e.target.value)} />
-              </div>
+              </FormField>
             </div>
             <DialogFooter>
-              <Button onClick={submit} disabled={pending || !name}>
-                Salva
-              </Button>
+              <Button onClick={submit} disabled={pending || !name}>Salva</Button>
             </DialogFooter>
           </div>
         </DialogContent>
@@ -506,37 +516,31 @@ type MemberVM = {
 export function MemberManager({
   members,
   currentMemberId,
+  // Solo gli admin gestiscono i membri (vedi requireAdmin lato server). I non-admin
+  // vedono l'elenco in sola lettura; il gating UI rispecchia quello del server.
   canManage,
 }: {
   members: MemberVM[];
   currentMemberId: string;
-  // Solo gli admin gestiscono i membri (vedi requireAdmin lato server). I non-admin
-  // vedono l'elenco in sola lettura; il gating UI rispecchia quello del server.
   canManage: boolean;
 }) {
   const { pending, run } = useAction();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<MemberVM | undefined>();
+  const { open, setOpen, editing, openNew: _openNew, openEdit: _openEdit } = useEntityEditor<MemberVM>();
   const [haUserId, setHaUserId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [haPersonEntityId, setHaPersonEntityId] = useState("");
   const [color, setColor] = useState("#3b82f6");
 
   function openNew() {
-    setEditing(undefined);
-    setHaUserId("");
-    setDisplayName("");
-    setHaPersonEntityId("");
-    setColor("#3b82f6");
-    setOpen(true);
+    setHaUserId(""); setDisplayName(""); setHaPersonEntityId(""); setColor("#3b82f6");
+    _openNew();
   }
   function openEdit(m: MemberVM) {
-    setEditing(m);
     setHaUserId(m.haUserId);
     setDisplayName(m.displayName);
     setHaPersonEntityId(m.haPersonEntityId ?? "");
     setColor(m.color);
-    setOpen(true);
+    _openEdit(m);
   }
   function submit() {
     const payload = { haUserId, displayName, haPersonEntityId, color };
@@ -559,31 +563,23 @@ export function MemberManager({
       }
     >
       {members.map((m) => (
-        <div key={m.id} className="flex items-center gap-2 rounded-md border p-2 transition-colors hover:bg-muted/50">
-          <span className="inline-block size-3 rounded-full" style={{ backgroundColor: m.color }} />
+        <EntityRow
+          key={m.id}
+          left={<span className="inline-block size-3 rounded-full" style={{ backgroundColor: m.color }} />}
+          onEdit={canManage ? () => openEdit(m) : undefined}
+          onDelete={canManage && m.id !== currentMemberId
+            ? () => run(() => deleteMember(m.id), () => {}, "Membro eliminato")
+            : undefined}
+          deleteTitle="Eliminare il membro?"
+          deleteDescription={`"${m.displayName}" verrà rimosso. L'operazione non è reversibile.`}
+        >
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium">
               {m.displayName} {m.id === currentMemberId && <span className="text-xs text-muted-foreground">(tu)</span>}
             </div>
             <div className="truncate text-xs text-muted-foreground">{m.haUserId}</div>
           </div>
-          {canManage && (
-            <Button size="icon" variant="ghost" onClick={() => openEdit(m)}>
-              <Pencil className="size-4" />
-            </Button>
-          )}
-          {canManage && m.id !== currentMemberId && (
-            <ConfirmButton
-              size="icon"
-              variant="ghost"
-              title="Eliminare il membro?"
-              description={`"${m.displayName}" verrà rimosso. L'operazione non è reversibile.`}
-              onConfirm={() => run(() => deleteMember(m.id), () => {}, "Membro eliminato")}
-            >
-              <Trash2 className="size-4" />
-            </ConfirmButton>
-          )}
-        </div>
+        </EntityRow>
       ))}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -592,37 +588,31 @@ export function MemberManager({
             <DialogTitle>{editing ? "Modifica membro" : "Nuovo membro"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Nome visualizzato</Label>
+            <FormField label="Nome visualizzato">
               <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label>haUserId</Label>
+            </FormField>
+            <FormField label="haUserId">
               <Input
                 value={haUserId}
                 onChange={(e) => setHaUserId(e.target.value)}
                 disabled={!!editing}
                 placeholder="ID utente di Home Assistant"
               />
-            </div>
+            </FormField>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label>person entity (opz.)</Label>
+              <FormField label="person entity (opz.)">
                 <Input
                   value={haPersonEntityId}
                   onChange={(e) => setHaPersonEntityId(e.target.value)}
                   placeholder="person.silvia"
                 />
-              </div>
-              <div className="space-y-1">
-                <Label>Colore</Label>
+              </FormField>
+              <FormField label="Colore">
                 <Input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
-              </div>
+              </FormField>
             </div>
             <DialogFooter>
-              <Button onClick={submit} disabled={pending || !displayName || !haUserId}>
-                Salva
-              </Button>
+              <Button onClick={submit} disabled={pending || !displayName || !haUserId}>Salva</Button>
             </DialogFooter>
           </div>
         </DialogContent>

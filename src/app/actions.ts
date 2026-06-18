@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Frequency, AssignmentMode, OccurrenceStatus, Prisma, type Member } from "@prisma/client";
+import { Frequency, AssignmentMode, OccurrenceStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { randomUUID } from "crypto";
 import { requireMember, requireAdmin, getHaAccessToken } from "@/lib/auth";
@@ -14,11 +14,19 @@ import {
 } from "@/lib/ha";
 import {
   buildRRule,
-  decodeOccId,
   firstCadenceOnOrAfter,
+  loadOcc,
   nextCadenceAfter,
-  rotationMemberId,
+  upsertOcc,
+  type OccCtx,
 } from "@/lib/occurrences";
+import { DATE_RE, MS_PER_DAY, dateOnlyUTC, parseDateUTC } from "@/lib/dates";
+import {
+  DESCRIPTION,
+  SUMMARY,
+  occurrenceAssigneeNames,
+  seriesAssigneeNames,
+} from "@/lib/calendar";
 
 function revalidateAll() {
   revalidatePath("/");
@@ -100,19 +108,6 @@ export async function deleteMember(id: string) {
 
 // --- Task -----------------------------------------------------------------
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-/** Mezzanotte UTC di una data (azzera l'orario). */
-function dateOnlyUTC(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-
-/** "YYYY-MM-DD" -> Date a mezzanotte UTC (compatibile con le colonne @db.Date). */
-function parseDateUTC(s: string): Date {
-  return new Date(`${s}T00:00:00.000Z`);
-}
-
 const taskSchema = z
   .object({
     roomId: z.string().min(1, "Stanza obbligatoria"),
@@ -184,39 +179,6 @@ async function validAssigneeIds(data: TaskData, houseId: string): Promise<string
   return members.map((m) => m.id);
 }
 
-const SUMMARY = (name: string, assignees: string[] = []) =>
-  `🧹 ${name}${assignees.length ? ` — ${assignees.join(", ")}` : ""}`;
-const DESCRIPTION = (room: string) => `Pulizie — ${room}`;
-
-/**
- * Nomi degli assegnatari di un'intera serie per il titolo dell'evento ricorrente:
- * FIXED → gli assegnatari fissi; ROTATION → tutti i membri della casa (il titolo
- * della serie non può riflettere il singolo turno, quindi li elenca tutti).
- */
-async function seriesAssigneeNames(task: {
-  houseId: string;
-  assignmentMode: AssignmentMode;
-  assignees: { displayName: string }[];
-}): Promise<string[]> {
-  if (task.assignmentMode === AssignmentMode.FIXED) {
-    return task.assignees.map((a) => a.displayName);
-  }
-  const members = await prisma.member.findMany({
-    where: { houseId: task.houseId },
-    orderBy: { createdAt: "asc" },
-    select: { displayName: true },
-  });
-  return members.map((m) => m.displayName);
-}
-
-/** Nomi degli assegnatari di una singola occorrenza (per gli eventi standalone). */
-function occurrenceAssigneeNames(occ: OccCtx): string[] {
-  if (occ.task.assignmentMode === AssignmentMode.FIXED) {
-    return occ.task.assignees.map((a) => a.displayName);
-  }
-  return occ.assignedMember ? [occ.assignedMember.displayName] : [];
-}
-
 /**
  * Crea sul calendario HA un singolo evento ricorrente per la serie e salva lo
  * uid su Task.haEventId. No-op senza token o se già sincronizzata.
@@ -273,80 +235,6 @@ async function deleteSeriesFromCalendar(
     // Istanza non trovata: ripieghiamo cancellando l'intera serie.
     await deleteCalendarEventWs({ token, uid: task.haEventId });
   }
-}
-
-type TaskFull = Prisma.TaskGetPayload<{ include: { room: true; assignees: true } }>;
-type OccRow = Prisma.TaskOccurrenceGetPayload<object>;
-
-/**
- * Contesto di una singola occorrenza (virtuale o con override). Identità = lo slot
- * di cadenza (`cadenceDate`). `dueDate` è la data mostrata (= cadenceDate, tranne se
- * ripianificata). `row` è l'eventuale eccezione salvata in DB.
- */
-type OccCtx = {
-  task: TaskFull;
-  cadenceDate: Date;
-  dueDate: Date;
-  haEventId: string | null;
-  calendarRemoved: boolean;
-  assignedMember: Member | null;
-  row: OccRow | null;
-};
-
-/** Carica il contesto di un'occorrenza dall'id virtuale (taskId_YYYY-MM-DD). */
-async function loadOcc(occId: string, houseId: string): Promise<OccCtx | null> {
-  const dec = decodeOccId(occId);
-  if (!dec) return null;
-  const task = await prisma.task.findFirst({
-    where: { id: dec.taskId, houseId },
-    include: { room: true, assignees: true },
-  });
-  if (!task) return null;
-  const [row, members] = await Promise.all([
-    prisma.taskOccurrence.findUnique({
-      where: { taskId_cadenceDate: { taskId: task.id, cadenceDate: dec.cadenceDate } },
-    }),
-    prisma.member.findMany({ where: { houseId }, orderBy: { createdAt: "asc" } }),
-  ]);
-  const assignedId = rotationMemberId(task, members, dec.cadenceDate);
-  return {
-    task,
-    cadenceDate: dec.cadenceDate,
-    dueDate: row ? dateOnlyUTC(row.dueDate) : dec.cadenceDate,
-    haEventId: row?.haEventId ?? null,
-    calendarRemoved: row?.calendarRemoved ?? false,
-    assignedMember: assignedId ? members.find((m) => m.id === assignedId) ?? null : null,
-    row,
-  };
-}
-
-/** Campi di deviazione applicabili a un'eccezione. */
-type OccPatch = {
-  status?: OccurrenceStatus;
-  dueDate?: Date;
-  completedAt?: Date | null;
-  completedByMemberId?: string | null;
-  haEventId?: string | null;
-  calendarRemoved?: boolean;
-};
-
-/** Upsert dell'eccezione per uno slot di cadenza. Ritorna la riga salvata. */
-function upsertOcc(ctx: OccCtx, patch: OccPatch): Promise<OccRow> {
-  return prisma.taskOccurrence.upsert({
-    where: { taskId_cadenceDate: { taskId: ctx.task.id, cadenceDate: ctx.cadenceDate } },
-    create: {
-      houseId: ctx.task.houseId,
-      taskId: ctx.task.id,
-      cadenceDate: ctx.cadenceDate,
-      dueDate: patch.dueDate ?? ctx.dueDate,
-      status: patch.status ?? OccurrenceStatus.PENDING,
-      completedAt: patch.completedAt ?? null,
-      completedByMemberId: patch.completedByMemberId ?? null,
-      haEventId: patch.haEventId ?? null,
-      calendarRemoved: patch.calendarRemoved ?? false,
-    },
-    update: patch,
-  });
 }
 
 /** Rimuove dal calendario la singola occorrenza (evento standalone o istanza della serie). */

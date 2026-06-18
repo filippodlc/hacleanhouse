@@ -1,26 +1,12 @@
 import type { OccurrenceVM } from "@/components/occurrence-row";
 import { prisma } from "@/lib/db";
-import { Frequency, OccurrenceStatus, type Member, type Task } from "@prisma/client";
+import { MS_PER_DAY, dateOnlyUTC, diffDays, isoDate } from "@/lib/dates";
+import { Frequency, OccurrenceStatus, Prisma, type Member, type Task } from "@prisma/client";
 import "server-only";
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-/** Mezzanotte UTC della data data (azzera l'orario). */
-function dateOnlyUTC(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-
-function diffDays(a: Date, b: Date): number {
-  return Math.round((dateOnlyUTC(a).getTime() - dateOnlyUTC(b).getTime()) / MS_PER_DAY);
-}
 
 /** Numero di giorni nel mese (UTC). */
 function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-}
-
-function isoDate(d: Date): string {
-  return dateOnlyUTC(d).toISOString().slice(0, 10);
 }
 
 /**
@@ -110,6 +96,22 @@ export function buildRRule(task: Task): string | null {
     parts.push(`UNTIL=${until}`);
   }
   return parts.join(";");
+}
+
+/** Intervallo nominale in giorni della ricorrenza (MONTHLY ≈ 30). */
+export function frequencyIntervalDays(task: Task): number {
+  switch (task.frequency) {
+    case Frequency.DAILY:
+      return 1;
+    case Frequency.WEEKLY:
+      return 7;
+    case Frequency.EVERY_N_DAYS:
+      return task.everyNDays && task.everyNDays > 0 ? task.everyNDays : 1;
+    case Frequency.MONTHLY:
+      return 30;
+    default:
+      return 1;
+  }
 }
 
 /**
@@ -296,4 +298,80 @@ export async function listOccurrences(opts: {
   // Ordine stabile: per data, poi priorità.
   out.sort((a, b) => (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : a.priority - b.priority));
   return out;
+}
+
+// --- Contesto occorrenza --------------------------------------------------
+
+export type TaskFull = Prisma.TaskGetPayload<{ include: { room: true; assignees: true } }>;
+export type OccRow = Prisma.TaskOccurrenceGetPayload<object>;
+
+/**
+ * Contesto di una singola occorrenza (virtuale o con override). Identità = lo slot
+ * di cadenza (`cadenceDate`). `dueDate` è la data mostrata (= cadenceDate, tranne se
+ * ripianificata). `row` è l'eventuale eccezione salvata in DB.
+ */
+export type OccCtx = {
+  task: TaskFull;
+  cadenceDate: Date;
+  dueDate: Date;
+  haEventId: string | null;
+  calendarRemoved: boolean;
+  assignedMember: Member | null;
+  row: OccRow | null;
+};
+
+/** Campi di deviazione applicabili a un'eccezione. */
+export type OccPatch = {
+  status?: OccurrenceStatus;
+  dueDate?: Date;
+  completedAt?: Date | null;
+  completedByMemberId?: string | null;
+  haEventId?: string | null;
+  calendarRemoved?: boolean;
+};
+
+/** Carica il contesto di un'occorrenza dall'id virtuale (taskId_YYYY-MM-DD). */
+export async function loadOcc(occId: string, houseId: string): Promise<OccCtx | null> {
+  const dec = decodeOccId(occId);
+  if (!dec) return null;
+  const task = await prisma.task.findFirst({
+    where: { id: dec.taskId, houseId },
+    include: { room: true, assignees: true },
+  });
+  if (!task) return null;
+  const [row, members] = await Promise.all([
+    prisma.taskOccurrence.findUnique({
+      where: { taskId_cadenceDate: { taskId: task.id, cadenceDate: dec.cadenceDate } },
+    }),
+    prisma.member.findMany({ where: { houseId }, orderBy: { createdAt: "asc" } }),
+  ]);
+  const assignedId = rotationMemberId(task, members, dec.cadenceDate);
+  return {
+    task,
+    cadenceDate: dec.cadenceDate,
+    dueDate: row ? dateOnlyUTC(row.dueDate) : dec.cadenceDate,
+    haEventId: row?.haEventId ?? null,
+    calendarRemoved: row?.calendarRemoved ?? false,
+    assignedMember: assignedId ? members.find((m) => m.id === assignedId) ?? null : null,
+    row,
+  };
+}
+
+/** Upsert dell'eccezione per uno slot di cadenza. Ritorna la riga salvata. */
+export function upsertOcc(ctx: OccCtx, patch: OccPatch): Promise<OccRow> {
+  return prisma.taskOccurrence.upsert({
+    where: { taskId_cadenceDate: { taskId: ctx.task.id, cadenceDate: ctx.cadenceDate } },
+    create: {
+      houseId: ctx.task.houseId,
+      taskId: ctx.task.id,
+      cadenceDate: ctx.cadenceDate,
+      dueDate: patch.dueDate ?? ctx.dueDate,
+      status: patch.status ?? OccurrenceStatus.PENDING,
+      completedAt: patch.completedAt ?? null,
+      completedByMemberId: patch.completedByMemberId ?? null,
+      haEventId: patch.haEventId ?? null,
+      calendarRemoved: patch.calendarRemoved ?? false,
+    },
+    update: patch,
+  });
 }
