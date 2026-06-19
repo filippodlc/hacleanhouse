@@ -9,7 +9,6 @@ import {
     rescheduleOccurrence,
     skipOccurrence,
 } from "@/app/actions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -29,18 +28,12 @@ export type OccurrenceVM = {
   taskName: string;
   roomName: string;
   roomIcon: string;
-  priority: number; // 1 alta, 2 media, 3 bassa
   status: "PENDING" | "DONE" | "SKIPPED";
   assignees: { name: string; color: string | null }[];
   dueDate: string;
   onCalendar: boolean;
 };
 
-const PRIORITY = {
-  1: { label: "Alta", variant: "destructive" as const, accent: "border-l-destructive" },
-  2: { label: "Media", variant: "secondary" as const, accent: "border-l-primary" },
-  3: { label: "Bassa", variant: "outline" as const, accent: "border-l-border" },
-};
 
 export function OccurrenceRow({
   occ,
@@ -55,7 +48,6 @@ export function OccurrenceRow({
   const [newDate, setNewDate] = useState("");
   const done = occ.status === "DONE";
   const skipped = occ.status === "SKIPPED";
-  const prio = PRIORITY[occ.priority as 1 | 2 | 3] ?? PRIORITY[2];
 
   function run(fn: () => Promise<unknown>, okMsg?: string, onOk?: () => void) {
     startTransition(async () => {
@@ -87,7 +79,7 @@ export function OccurrenceRow({
 
   return (
     <div
-      className={`flex items-center gap-3 rounded-lg border border-l-2 bg-card p-3 shadow-sm transition-all hover:shadow-md ${prio.accent} ${
+      className={`flex items-center gap-3 rounded-lg border bg-card p-3 shadow-sm transition-all hover:shadow-md ${
         done ? "opacity-60" : ""
       }`}
     >
@@ -131,9 +123,6 @@ export function OccurrenceRow({
         </div>
       </div>
 
-      <Badge variant={prio.variant} className="shrink-0">
-        {prio.label}
-      </Badge>
 
       <div className="flex shrink-0 gap-1">
         {occ.onCalendar ? (

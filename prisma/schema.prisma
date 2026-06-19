@@ -83,7 +83,6 @@ model Task {
   roomId           String
   room             Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
   name             String
-  priority         Int            @default(2) // 1=alta, 2=media, 3=bassa
   frequency        Frequency
   everyNDays       Int? // valorizzato solo per EVERY_N_DAYS
   startDate        DateTime       @db.Date // ancora della ricorrenza (sostituisce createdAt nel calcolo)

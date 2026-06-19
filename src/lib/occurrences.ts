@@ -257,7 +257,6 @@ export async function listOccurrences(opts: {
       taskName: task.name,
       roomName: task.room.name,
       roomIcon: task.room.icon,
-      priority: task.priority,
       status,
       assignees: assigneesFor(task, members, seq),
       dueDate: isoDate(displayDate),
@@ -294,8 +293,7 @@ export async function listOccurrences(opts: {
     if (vm) out.push(vm);
   }
 
-  // Ordine stabile: per data, poi priorità.
-  out.sort((a, b) => (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : a.priority - b.priority));
+  out.sort((a, b) => (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0));
   return out;
 }
 

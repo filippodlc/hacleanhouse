@@ -143,7 +143,6 @@ type TaskVM = {
   name: string;
   roomId: string;
   roomName: string;
-  priority: number;
   frequency: string;
   everyNDays: number | null;
   startDate: string; // YYYY-MM-DD
@@ -181,7 +180,6 @@ function TaskForm({
   const { pending, run } = useAction();
   const [name, setName] = useState(task?.name ?? "");
   const [roomId, setRoomId] = useState(task?.roomId ?? rooms[0]?.id ?? "");
-  const [priority, setPriority] = useState(String(task?.priority ?? 2));
   const [frequency, setFrequency] = useState(task?.frequency ?? "WEEKLY");
   const [everyNDays, setEveryNDays] = useState(String(task?.everyNDays ?? 2));
   const [startDate, setStartDate] = useState(task?.startDate ?? todayISO());
@@ -210,7 +208,6 @@ function TaskForm({
     const payload = {
       name,
       roomId,
-      priority,
       frequency: frequency as never,
       everyNDays: frequency === "EVERY_N_DAYS" ? everyNDays : undefined,
       startDate,
@@ -233,22 +230,12 @@ function TaskForm({
       <FormField label="Nome">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Es. Aspirare salotto" />
       </FormField>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FormField label="Stanza">
           <Select value={roomId} onValueChange={setRoomId}>
             <SelectTrigger><SelectValue placeholder="Stanza" /></SelectTrigger>
             <SelectContent>
               {rooms.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </FormField>
-        <FormField label="Priorità">
-          <Select value={priority} onValueChange={setPriority}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">Alta</SelectItem>
-              <SelectItem value="2">Media</SelectItem>
-              <SelectItem value="3">Bassa</SelectItem>
             </SelectContent>
           </Select>
         </FormField>

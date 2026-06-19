@@ -34,7 +34,6 @@ export default async function ManagePage() {
           name: t.name,
           roomId: t.roomId,
           roomName: t.room.name,
-          priority: t.priority,
           frequency: t.frequency,
           everyNDays: t.everyNDays,
           startDate: t.startDate.toISOString().slice(0, 10),

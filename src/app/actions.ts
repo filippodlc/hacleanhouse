@@ -112,7 +112,6 @@ const taskSchema = z
   .object({
     roomId: z.string().min(1, "Stanza obbligatoria"),
     name: z.string().trim().min(1, "Nome obbligatorio"),
-    priority: z.coerce.number().int().min(1).max(3).default(2),
     frequency: z.nativeEnum(Frequency),
     everyNDays: z.coerce.number().int().min(1).optional(),
     startDate: z.string().regex(DATE_RE, "Data di inizio non valida"),
@@ -145,7 +144,6 @@ function taskProps(data: TaskData) {
   return {
     roomId: data.roomId,
     name: data.name,
-    priority: data.priority,
     frequency: data.frequency,
     everyNDays: data.frequency === Frequency.EVERY_N_DAYS ? data.everyNDays ?? 1 : null,
     assignmentMode: data.assignmentMode,
