@@ -20,50 +20,6 @@ function todayUTC(): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
-/**
- * Somma dei minuti stimati per persona coinvolta. Un task FIXED con più
- * assegnatari conta i suoi minuti per ognuno (tutti devono svolgerlo). Le
- * occorrenze senza assegnatario finiscono sotto "Non assegnato".
- */
-function minutesByPerson(
-  occ: OccurrenceVM[],
-): { name: string; color: string | null; minutes: number }[] {
-  const acc = new Map<string, { color: string | null; minutes: number }>();
-  for (const o of occ) {
-    const people = o.assignees.length > 0 ? o.assignees : [{ name: "Non assegnato", color: null }];
-    for (const p of people) {
-      const cur = acc.get(p.name) ?? { color: p.color, minutes: 0 };
-      cur.minutes += o.estMinutes;
-      acc.set(p.name, cur);
-    }
-  }
-  return [...acc.entries()]
-    .map(([name, v]) => ({ name, ...v }))
-    .sort((a, b) => b.minutes - a.minutes);
-}
-
-/** Chip riepilogo carico di lavoro per persona. */
-function WorkloadSummary({ occ }: { occ: OccurrenceVM[] }) {
-  const rows = minutesByPerson(occ);
-  if (rows.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2">
-      {rows.map((r) => (
-        <span
-          key={r.name}
-          className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
-        >
-          <span
-            className="size-2 shrink-0 rounded-full"
-            style={{ backgroundColor: r.color ?? "var(--muted-foreground)" }}
-          />
-          <span className="font-medium">{r.name}</span>
-          <span className="text-muted-foreground">{r.minutes} min</span>
-        </span>
-      ))}
-    </div>
-  );
-}
 
 export default async function TodayPage() {
   const member = await getCurrentMember();
@@ -145,9 +101,8 @@ export default async function TodayPage() {
         </p>
       </div>
 
-      {/* Cluster: Oggi — prima i badge dei tempi, poi la lista per stanza. */}
+      {/* Cluster: Oggi */}
       <section className="space-y-3">
-        <WorkloadSummary occ={todays.filter((o) => o.status === "PENDING")} />
         {todays.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
@@ -174,14 +129,13 @@ export default async function TodayPage() {
         )}
       </section>
 
-      {/* Cluster: In ritardo — prima i tempi, poi la lista delle task arretrate. */}
+      {/* Cluster: In ritardo */}
       {overdue.length > 0 && (
         <Card>
           <CardContent className="space-y-3 pt-2 pb-4">
             <h2 className="font-heading text-lg font-semibold tracking-tight text-destructive">
               In ritardo ({overdue.length})
             </h2>
-            <WorkloadSummary occ={overdue} />
             <div className="space-y-2">
               {overdue.map((o) => (
                 <OccurrenceRow key={o.id} occ={o} showDate />

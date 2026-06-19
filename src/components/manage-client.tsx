@@ -14,7 +14,6 @@ import {
 import { ConfirmButton } from "@/components/confirm-button";
 import { IconPicker } from "@/components/icon-picker";
 import { RoomIcon } from "@/components/room-icon";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -145,7 +144,6 @@ type TaskVM = {
   roomId: string;
   roomName: string;
   priority: number;
-  estMinutes: number;
   frequency: string;
   everyNDays: number | null;
   startDate: string; // YYYY-MM-DD
@@ -184,7 +182,6 @@ function TaskForm({
   const [name, setName] = useState(task?.name ?? "");
   const [roomId, setRoomId] = useState(task?.roomId ?? rooms[0]?.id ?? "");
   const [priority, setPriority] = useState(String(task?.priority ?? 2));
-  const [estMinutes, setEstMinutes] = useState(String(task?.estMinutes ?? 10));
   const [frequency, setFrequency] = useState(task?.frequency ?? "WEEKLY");
   const [everyNDays, setEveryNDays] = useState(String(task?.everyNDays ?? 2));
   const [startDate, setStartDate] = useState(task?.startDate ?? todayISO());
@@ -194,7 +191,7 @@ function TaskForm({
       : task.repeatCount != null
         ? "COUNT"
         : "NEVER"
-    : "COUNT";
+    : "NEVER";
   const [endMode, setEndMode] = useState<"COUNT" | "DATE" | "NEVER">(initialEndMode);
   const [repeatCount, setRepeatCount] = useState(String(task?.repeatCount ?? 4));
   const [endDate, setEndDate] = useState(task?.endDate ?? "");
@@ -214,7 +211,6 @@ function TaskForm({
       name,
       roomId,
       priority,
-      estMinutes,
       frequency: frequency as never,
       everyNDays: frequency === "EVERY_N_DAYS" ? everyNDays : undefined,
       startDate,
@@ -237,7 +233,7 @@ function TaskForm({
       <FormField label="Nome">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Es. Aspirare salotto" />
       </FormField>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <FormField label="Stanza">
           <Select value={roomId} onValueChange={setRoomId}>
             <SelectTrigger><SelectValue placeholder="Stanza" /></SelectTrigger>
@@ -255,9 +251,6 @@ function TaskForm({
               <SelectItem value="3">Bassa</SelectItem>
             </SelectContent>
           </Select>
-        </FormField>
-        <FormField label="Minuti stimati">
-          <Input type="number" min={1} value={estMinutes} onChange={(e) => setEstMinutes(e.target.value)} />
         </FormField>
         <FormField label="Frequenza">
           <Select value={frequency} onValueChange={setFrequency}>
@@ -388,7 +381,7 @@ export function TaskManager({
       {tasks.map((t) => (
         <EntityRow
           key={t.id}
-          badge={<Badge variant="outline">{t.estMinutes}m</Badge>}
+          badge={null}
           onEdit={() => openEdit(t)}
           onDelete={() => run(() => deleteTask(t.id), () => {}, "Task eliminato")}
           deleteTitle="Eliminare il task?"

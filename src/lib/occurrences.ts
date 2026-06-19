@@ -258,7 +258,6 @@ export async function listOccurrences(opts: {
       roomName: task.room.name,
       roomIcon: task.room.icon,
       priority: task.priority,
-      estMinutes: task.estMinutes,
       status,
       assignees: assigneesFor(task, members, seq),
       dueDate: isoDate(displayDate),

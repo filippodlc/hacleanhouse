@@ -30,7 +30,6 @@ export type OccurrenceVM = {
   roomName: string;
   roomIcon: string;
   priority: number; // 1 alta, 2 media, 3 bassa
-  estMinutes: number;
   status: "PENDING" | "DONE" | "SKIPPED";
   assignees: { name: string; color: string | null }[];
   dueDate: string;
@@ -110,15 +109,14 @@ export function OccurrenceRow({
 
       <div className="min-w-0 flex-1">
         <div
-          className={`truncate text-sm font-medium ${
+          className={`text-sm font-medium ${
             done || skipped ? "line-through" : ""
           }`}
         >
           {occ.taskName}
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span>{occ.estMinutes} min</span>
-          {showDate && <span>· {occ.dueDate}</span>}
+          {showDate && <span>{occ.dueDate}</span>}
           {occ.assignees.map((a, i) => (
             <span key={i} className="inline-flex items-center gap-1">
               ·
